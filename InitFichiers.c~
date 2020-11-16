@@ -1,0 +1,124 @@
+// -----------------------------------------------------------------------------
+// Initialisation des fichiers de signaux
+// 
+// version 1 : 15/05/19
+//
+// -----------------------------------------------------------------------------
+
+#include <math.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#define SIGNALTEST1 "SignalAcquis1"
+#define SIGNALTEST2 "SignalAcquis2"
+#define SIGNAUXCONNUS "SignauxConnus"
+
+#define NB_ESPECES 10               // nb d'especes connues
+#define MAX_ECHANTILLONS 1024       // taille max d'un tableau d'echantillonage
+
+#define DEUXPI 6.28318
+
+double Sinus[MAX_ECHANTILLONS-1];
+
+
+// -----------------------------------------------------------------------------
+// Table sinus
+// -----------------------------------------------------------------------------
+
+void Table (double Sinus[]) {
+  printf("Creation d'une table sin sur %d echantillons", MAX_ECHANTILLONS);
+
+  for (unsigned int i=0; i<MAX_ECHANTILLONS; ++i) {
+    Sinus[i] = sin(i*DEUXPI/MAX_ECHANTILLONS);
+    // printf("i : %d, sin(i) : %f\n", i, Sinus[i]);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Creation du signal a tester et de la banque de signaux de reference
+// -----------------------------------------------------------------------------
+
+void InitSignauxAcquis (void) {
+// Initialisation de deux signaux acquis :
+//   SignalAcquis1, reconnu pour l'espèce 3 et proche pour l'espèce 5
+//   SignalAcquis2, non reconnu
+  
+  FILE * FichierSignalATester;
+  double SignalAcquis[MAX_ECHANTILLONS];
+
+  // Signal Acquis 1, reconnu pour l'espece 3 et proche pour l'espece 5
+  FichierSignalATester = fopen(SIGNALTEST1, "w");
+
+  // Table sinus
+  for (unsigned int i=0; i<MAX_ECHANTILLONS; ++i)
+    SignalAcquis[i] = Sinus[i];
+
+  // Corruption du signal sur quelques valeurs
+  for (unsigned int i=512; i<768; ++i)
+    SignalAcquis[i] = 0.5;
+  
+  // Affichage du signal test
+  for (unsigned int i=0; i<MAX_ECHANTILLONS; ++i)
+    printf("Signal a Tester, echantillon %d, valeur : %f\n",i, SignalAcquis[i]);
+
+  fwrite(SignalAcquis, sizeof(double), MAX_ECHANTILLONS, FichierSignalATester);
+  
+  fclose(FichierSignalATester);
+
+  
+  // Signal Acquis 2, non reconnu
+  FichierSignalATester = fopen(SIGNALTEST2, "w");
+
+  // Table sinus
+  for (unsigned int i=0; i<MAX_ECHANTILLONS; ++i)
+    SignalAcquis[i] = 0.5;
+
+  // Affichage du signal test
+  for (unsigned int i=0; i<MAX_ECHANTILLONS; ++i)
+    printf("Signal a Tester, echantillon %d, valeur : %f\n",i, SignalAcquis[i]);
+
+  fwrite(SignalAcquis, sizeof(double), MAX_ECHANTILLONS, FichierSignalATester);
+  
+  fclose(FichierSignalATester);
+}
+
+void InitBanqueSignauxConnus (void) {
+// Initialisation de la banque de signaux répertoriés : une sinusoide pour
+// toutes les espèces, sauf 3 et 5 qui sont respectivement identique et
+// proche du SignalAcquis1
+
+  FILE * BanqueSignaux;
+  double Signaux[NB_ESPECES][MAX_ECHANTILLONS];
+
+  BanqueSignaux = fopen(SIGNAUXCONNUS, "w");
+
+  for (unsigned int e=0; e<NB_ESPECES; ++e)
+    for (unsigned int i=0; i<MAX_ECHANTILLONS; ++i)
+      Signaux[e][i] = Sinus[i];
+
+  // Recopie dans la table de signaux à l'espèce 3 du signal test
+  for (unsigned int i=512; i<768; ++i) Signaux[3][i] = 0.5;
+  
+  // Recopie dans la table de signaux à l'espèce 5 d'un signal proche du signal test
+  for (unsigned int i=512; i<768; ++i) Signaux[5][i] = 0.5;
+  for (unsigned int i=512; i<648; ++i)
+    if (i%2==0) Signaux[5][i] = -0.8;
+
+  fwrite(Signaux, sizeof(double), NB_ESPECES*MAX_ECHANTILLONS, BanqueSignaux);
+
+  fclose(BanqueSignaux);
+}
+  
+// -----------------------------------------------------------------------------
+// main
+// -----------------------------------------------------------------------------
+
+int main (void) {
+  Table(Sinus);
+  InitSignauxAcquis();
+  InitBanqueSignauxConnus();
+  printf("\nFini\n");
+  
+  return 0;
+}
